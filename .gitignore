@@ -1,0 +1,26 @@
+# Sanal ortam
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Model ağırlıkları & eğitim çıktıları (büyük dosyalar)
+*.pt
+runs/
+yolov8*.pt
+
+# Veri seti (çok büyük, repoya konmaz)
+datasets/
+VisDrone/
+
+# Çıktı görselleri
+test_sonuc.jpg
+*.jpg.out
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
