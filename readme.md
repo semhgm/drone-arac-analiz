@@ -1,40 +1,56 @@
-# 🚁 Drone Görüntü Analizi — Araç Tespiti & Yoğunluk Analizi
+# 🚁 Drone Araç Analizi
 
-Drone (UAV) görüntülerinden **araç tespiti**, **sınıf bazında sayım** ve **yoğunluk haritası (heatmap)** üreten bir görüntü işleme uygulaması. Görüntü İşleme dersi kapsamında geliştirilmiştir.
-
----
-
-## ✨ Özellikler
-
-- 🎯 **Araç Tespiti** — YOLOv8 (VisDrone üzerinde fine-tune) ile yukarıdan bakış araç tespiti
-- 🔢 **Sayım** — Tespit edilen araçların sınıf bazında (car, van, truck, bus) sayımı
-- 🔥 **Yoğunluk Haritası** — Araç yoğunluğunun ısı haritası ile görselleştirilmesi
-- 🖥️ **Arayüz** — Streamlit tabanlı: görüntü yükle → analiz et → sonuçları gör
+> Görüntü İşleme Dersi — Final Projesi  
+> Drone (UAV) görüntülerinden araç tespiti, sayım ve yoğunluk haritası
 
 ---
 
-## 🛠️ Teknoloji
+## 📌 Proje Özeti
 
-| Bileşen | Kullanım |
-|---------|----------|
-| YOLOv8 (ultralytics) | Nesne tespiti & eğitim |
-| OpenCV | Görüntü işleme, heatmap |
-| Streamlit | Web arayüzü |
-| VisDrone | Eğitim veri seti |
-| PyTorch (MPS) | Apple Silicon GPU hızlandırma |
+YOLOv8n modeli VisDrone veri seti üzerinde fine-tune edilerek drone görüntülerinden araç tespiti, sınıf bazında sayım ve yoğunluk haritası üretimi yapılmaktadır. Streamlit arayüzü üzerinden görüntü yüklenip analiz sonuçları görselleştirilebilmekte; DeepSeek-R1 (Ollama) entegrasyonu ile otomatik trafik raporu oluşturulmaktadır.
+
+---
+
+## 🛠️ Teknoloji Stack
+
+| Katman | Teknoloji |
+|--------|-----------|
+| Model | YOLOv8n (ultralytics) |
+| Veri seti | VisDrone2019-DET |
+| Görüntü işleme | OpenCV |
+| Arayüz | Streamlit |
+| LLM | DeepSeek-R1 7B (Ollama) |
+| Geliştirme | MacBook Air M4 (MPS) |
+| Eğitim | HP Victus — RTX 4050, CUDA 12.1 |
+
+---
+
+## 📁 Klasör Yapısı
+
+```
+drone-arac-analiz/
+├── analyze.py          # Tespit + sayım + heatmap pipeline
+├── app.py              # Streamlit arayüzü
+├── train.py            # YOLOv8 fine-tune scripti
+├── test_inference.py   # Pretrained model testi
+├── test_mps.py         # Apple GPU testi
+├── requirements.txt
+├── .gitignore
+└── output/             # Analiz çıktıları (gitignore'd)
+```
 
 ---
 
 ## 🚀 Kurulum
 
 ```bash
-# Repoyu klonla
-git clone https://github.com/<kullanici-adi>/drone-arac-analiz.git
+# Repo'yu klonla
+git clone https://github.com/kullanici/drone-arac-analiz.git
 cd drone-arac-analiz
 
 # Sanal ortam
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Bağımlılıklar
 pip install -r requirements.txt
@@ -42,46 +58,79 @@ pip install -r requirements.txt
 
 ---
 
-## 📦 Kullanım
+## 🏋️ Model Eğitimi
 
-### 1. Hızlı tespit testi
-```bash
-python test_inference.py
-```
-
-### 2. Model eğitimi (fine-tune)
 ```bash
 python train.py
 ```
 
-### 3. Arayüzü başlat
+**Eğitim parametreleri (v1):**
+- Model: YOLOv8n
+- Epochs: 15 | Image size: 416 | Batch: 8
+- Dataset: VisDrone (6471 train, 548 val)
+- Device: RTX 4050 (CUDA) | Süre: ~20 dk
+
+**v1 Sonuçları:**
+
+| Metrik | Değer |
+|--------|-------|
+| mAP50 (genel) | 0.159 |
+| mAP50 (car) | 0.556 |
+| mAP50-95 | 0.084 |
+
+---
+
+## 🔍 Kullanım
+
+### Komut satırı
+
 ```bash
+python analyze.py --image yol/goruntu.jpg --model runs/.../best.pt
+```
+
+### Streamlit arayüzü
+
+```bash
+# Ollama çalışıyor olmalı (DeepSeek raporu için)
+ollama serve
+
 streamlit run app.py
 ```
 
+Arayüzde:
+1. Drone görüntüsü yükle (JPG/PNG)
+2. Confidence eşiğini ayarla
+3. "Analiz Et" butonuna bas
+4. Tespit görseli, heatmap ve DeepSeek raporu görüntülenir
+
 ---
 
-## 📁 Proje Yapısı
+## 🎯 Tespit Edilen Sınıflar
 
+| ID | Sınıf | Renk |
+|----|-------|------|
+| 3 | car | 🟢 Yeşil |
+| 4 | van | 🟠 Turuncu |
+| 5 | truck | 🔵 Mavi |
+| 8 | bus | 🟣 Mor |
+| 9 | motor | 🩵 Açık mavi |
+| 2 | bicycle | 🟡 Sarı |
+
+---
+
+## 🤖 DeepSeek Entegrasyonu
+
+[Ollama](https://ollama.com) üzerinden yerel olarak çalışan DeepSeek-R1 7B modeli, tespit sonuçlarını otomatik olarak analiz edip İngilizce trafik raporu üretir.
+
+```bash
+# DeepSeek modelini indir
+ollama pull deepseek-r1:7b
 ```
-drone-arac-analiz/
-├── README.md
-├── requirements.txt
-├── test_inference.py     # Pretrained model ile hızlı test
-├── train.py              # VisDrone fine-tune
-├── analyze.py            # Tespit + sayım + heatmap pipeline
-├── app.py                # Streamlit arayüzü
-└── runs/                 # Eğitim çıktıları (model ağırlıkları, metrikler)
-```
 
 ---
 
-## 📊 Veri Seti
+## 📊 Örnek Çıktılar
 
-[VisDrone](https://github.com/VisDrone/VisDrone-Dataset) — Tianjin Üniversitesi AISKYEYE ekibi tarafından oluşturulan, drone tabanlı tespit/takip için büyük ölçekli açık veri seti. Ultralytics tarafından otomatik indirilip YOLO formatına çevrilir.
-
----
-
-## 📝 Lisans
-
-Eğitim/akademik amaçlı geliştirilmiştir.
+- **Araç tespiti:** Sınıf bazında renkli bounding box'lar
+- **Yoğunluk haritası:** JET colormap overlay (mavi→kırmızı yoğunluk)
+- **Trafik raporu:** DeepSeek-R1 ile otomatik oluşturulan metin analizi

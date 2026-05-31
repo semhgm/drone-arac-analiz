@@ -23,9 +23,9 @@ import yaml
 MODEL_BASE   = "yolov8n.pt"      # Pretrained başlangıç ağırlıkları
 DATA_YAML    = "VisDrone.yaml"   # Ultralytics otomatik indirir + dönüştürür
 EPOCHS     = 15
-BATCH_SIZE = 8      # 16'dan 8'e
-IMAGE_SIZE = 416    # 640'tan 416'ya             # M4 8GB RAM için uygun; sorun çıkarsa 8'e düşür
-DEVICE       = "mps"             # Apple Silicon GPU
+DEVICE = "cuda"      # "mps" yerine
+IMAGE_SIZE = 416
+BATCH_SIZE = 8  
 PROJECT_DIR  = "runs/train"      # Sonuçlar buraya kaydedilir
 RUN_NAME     = "visdrone_v1"     # runs/train/visdrone_v1/
 
