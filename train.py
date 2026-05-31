@@ -1,5 +1,5 @@
 """
-YOLOv8n — VisDrone Fine-Tune Script
+YOLOv8n — VisDrone Fine-Tune Script v2
 ====================================
 Drone görüntülerinden araç tespiti için fine-tuning.
 
@@ -9,27 +9,24 @@ VisDrone sınıfları (10 adet):
   8: bus         9: motor
 
 Strateji:
-  - İlk çalıştırmada VisDrone (~2.3 GB) otomatik indirilir
-  - Kısa eğitim (20 epoch) → demo için yeterli, M4'te ~30-45 dk
-  - Sadece araç sınıflarını takip ediyoruz ama tüm sınıflarla eğitiyoruz
-    (VisDrone.yaml değiştirilmeden kullanılır, filtreleme inference'ta yapılır)
+  - VisDrone zaten indirildi (v1'den kalma)
+  - v2: 30 epoch, 640px → belirgin mAP artışı hedefleniyor
+  - Filtreleme inference'ta yapılır (pedestrian/people dahil edilmez)
 """
 
 from ultralytics import YOLO
 from pathlib import Path
-import yaml
 
 # ─── Ayarlar ──────────────────────────────────────────────────────────────────
-MODEL_BASE   = "yolov8n.pt"      # Pretrained başlangıç ağırlıkları
-DATA_YAML    = "VisDrone.yaml"   # Ultralytics otomatik indirir + dönüştürür
-EPOCHS     = 15
-DEVICE = "cuda"      # "mps" yerine
-IMAGE_SIZE = 416
-BATCH_SIZE = 8  
-PROJECT_DIR  = "runs/train"      # Sonuçlar buraya kaydedilir
-RUN_NAME     = "visdrone_v1"     # runs/train/visdrone_v1/
+MODEL_BASE   = "yolov8n.pt"
+DATA_YAML    = "VisDrone.yaml"
+EPOCHS       = 30
+DEVICE       = "cuda"
+IMAGE_SIZE   = 640
+BATCH_SIZE   = 8
+PROJECT_DIR  = "runs/train"
+RUN_NAME     = "visdrone_v2"
 
-# Araç sınıfları (analiz aşamasında bu ID'leri kullanacağız)
 VEHICLE_CLASSES = {
     2: "bicycle",
     3: "car",
@@ -42,16 +39,14 @@ VEHICLE_CLASSES = {
 # ─── Eğitim ───────────────────────────────────────────────────────────────────
 def train():
     print("=" * 60)
-    print("VisDrone Fine-Tune Başlıyor")
+    print("VisDrone Fine-Tune v2 Başlıyor")
     print(f"  Model   : {MODEL_BASE}")
     print(f"  Dataset : {DATA_YAML}")
     print(f"  Epochs  : {EPOCHS}")
+    print(f"  ImgSize : {IMAGE_SIZE}")
     print(f"  Batch   : {BATCH_SIZE}")
     print(f"  Device  : {DEVICE}")
     print("=" * 60)
-    print()
-    print("ℹ️  İlk çalıştırmada VisDrone (~2.3 GB) indirilecek.")
-    print("   Lütfen bekle...\n")
 
     model = YOLO(MODEL_BASE)
 
@@ -63,30 +58,29 @@ def train():
         device=DEVICE,
         project=PROJECT_DIR,
         name=RUN_NAME,
-        # Performans / M4 optimizasyonları
-        workers=4,           # Veri yükleme thread sayısı
-        cache=False,         # RAM'e cache etme (2.3 GB büyük olabilir)
-        patience=10,         # Early stopping: 10 epoch iyileşme yoksa dur
-        save=True,           # En iyi model kaydedilsin
-        save_period=5,       # Her 5 epoch'ta checkpoint
-        exist_ok=True,       # Aynı isimli run varsa üstüne yaz
+        # Optimizasyon
+        optimizer="AdamW",
+        lr0=0.001,
+        mosaic=1.0,        # küçük nesne augmentation
+        close_mosaic=5,    # son 5 epoch'ta mosaic kapat (stabilite)
+        workers=4,
+        cache=False,
+        patience=10,
+        save=True,
+        save_period=5,
+        exist_ok=True,
         verbose=True,
     )
 
     print()
     print("=" * 60)
     print("✅ Eğitim tamamlandı!")
-    print(f"   Sonuçlar : {PROJECT_DIR}/{RUN_NAME}/")
     print(f"   En iyi model : {PROJECT_DIR}/{RUN_NAME}/weights/best.pt")
-    print()
-
-    # mAP özetini yazdır
-    metrics = results  # train() sonucu metrics objesi döner
     try:
         print(f"   mAP50    : {results.results_dict.get('metrics/mAP50(B)', 'N/A'):.4f}")
         print(f"   mAP50-95 : {results.results_dict.get('metrics/mAP50-95(B)', 'N/A'):.4f}")
     except Exception:
-        print("   (Metrikler runs/train/visdrone_v1/results.csv dosyasında)")
+        print("   (Metrikler runs/train/visdrone_v2/results.csv dosyasında)")
     print("=" * 60)
 
     return results
@@ -94,4 +88,3 @@ def train():
 
 if __name__ == "__main__":
     train()
-
